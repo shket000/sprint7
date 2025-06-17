@@ -39,7 +39,15 @@ func TestCafeCount(t *testing.T) {
 			handler.ServeHTTP(rr, req)
 
 			require.Equal(t, http.StatusOK, rr.Code)
-			cafes := strings.Split(rr.Body.String(), ",")
+			response := rr.Body.String()
+
+			// Для count=0 ожидаем пустую строку
+			if tt.count == 0 {
+				assert.Empty(t, response)
+				return
+			}
+
+			cafes := strings.Split(response, ",")
 			assert.Equal(t, tt.expected, len(cafes))
 		})
 	}
@@ -55,10 +63,10 @@ func TestCafeSearch(t *testing.T) {
 		expectedLen int
 	}{
 		{"Search=фасоль", "фасоль", 0},
-		{"Search=кофе", "кофе", 2},
-		{"Search=вилка", "вилка", 1},
-		{"Search=Завтраки", "Завтраки", 1}, // Проверка регистронезависимости
-		{"Search=мир", "мир", 2},           // Должно найти "Мир кофе" и "Кофе и завтраки" (в названии есть "мир")
+		{"Search=кофе", "кофе", 2},         // "Мир кофе" и "Кофе и завтраки"
+		{"Search=вилка", "вилка", 1},       // "Ложка и вилка"
+		{"Search=Завтраки", "Завтраки", 1}, // "Кофе и завтраки"
+		{"Search=мир", "мир", 1},           // Только "Мир кофе" (в "Кофе и завтраки" нет "мир")
 	}
 
 	for _, tt := range tests {
@@ -72,7 +80,6 @@ func TestCafeSearch(t *testing.T) {
 			require.Equal(t, http.StatusOK, rr.Code)
 			response := rr.Body.String()
 
-			// Если ожидаем 0 результатов, проверяем пустую строку
 			if tt.expectedLen == 0 {
 				assert.Empty(t, response)
 				return
@@ -81,7 +88,6 @@ func TestCafeSearch(t *testing.T) {
 			cafes := strings.Split(response, ",")
 			assert.Equal(t, tt.expectedLen, len(cafes))
 
-			// Проверяем, что каждое кафе содержит искомую подстроку
 			lowerSearch := strings.ToLower(tt.search)
 			for _, cafe := range cafes {
 				lowerCafe := strings.ToLower(cafe)
